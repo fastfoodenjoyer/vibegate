@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 from vibegate.models import Finding, ScanSummary
 from vibegate.profiles import ProfileRegistry
+from vibegate.rules.frontend import PublicFrontendSecretEnvRule
 from vibegate.rules.secrets import CommittedEnvFileRule, HardcodedSecretRule
 from vibegate.rules.telegram import TelegramWebhookSecretTokenRule
 
@@ -32,7 +33,12 @@ class ScanResult(BaseModel):
 
 
 def default_rules() -> list[Rule]:
-    return [CommittedEnvFileRule(), HardcodedSecretRule(), TelegramWebhookSecretTokenRule()]
+    return [
+        CommittedEnvFileRule(),
+        HardcodedSecretRule(),
+        TelegramWebhookSecretTokenRule(),
+        PublicFrontendSecretEnvRule(),
+    ]
 
 
 class Scanner:

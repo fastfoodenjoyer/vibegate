@@ -38,6 +38,7 @@ class ProfileRegistry:
     def default(cls) -> ProfileRegistry:
         hardcoded_secret_rule = "secrets.hardcoded-token"
         committed_env_rule = "secrets.committed-env-file"
+        frontend_public_secret_rule = "frontend.public-secret-env"
         telegram_rule = "telegram.webhook-secret-token"
         return cls(
             profiles=[
@@ -64,27 +65,27 @@ class ProfileRegistry:
                 Profile(
                     profile_id="nextjs-vercel",
                     description="Next.js applications commonly deployed on Vercel.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
                 ),
                 Profile(
                     profile_id="vite-frontend",
                     description="Vite-powered frontend applications.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
                 ),
                 Profile(
                     profile_id="netlify-frontend",
                     description="Frontend applications configured for Netlify deployments.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
                 ),
                 Profile(
                     profile_id="supabase",
                     description="Applications using Supabase project configuration or credentials.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
                 ),
                 Profile(
                     profile_id="firebase",
                     description="Applications using Firebase project configuration or rules.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
                 ),
                 Profile(
                     profile_id="stripe-webhooks",
@@ -94,12 +95,12 @@ class ProfileRegistry:
                 Profile(
                     profile_id="authjs",
                     description="Applications using Auth.js or NextAuth authentication.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
                 ),
                 Profile(
                     profile_id="clerk",
                     description="Applications using Clerk authentication.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
                 ),
                 Profile(
                     profile_id="github-actions",

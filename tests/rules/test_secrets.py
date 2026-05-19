@@ -7,6 +7,7 @@ from vibegate.scanner import ScanContext, Scanner
 
 FAKE_TELEGRAM_TOKEN = "123456789:AAabcdefghijklmnopqrstuvwxyzABCDEFG"
 FAKE_OPENAI_KEY = "sk-proj-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKL0123456789"
+FAKE_STRIPE_SECRET_KEY = "".join(["sk", "_", "live", "_", "abcdefghijklmnopqrstuvwxyz012345"])
 
 
 def test_committed_env_file_rule_flags_dotenv_files(tmp_path: Path) -> None:
@@ -84,6 +85,30 @@ def test_hardcoded_secret_rule_flags_named_api_key_assignments(tmp_path: Path) -
     assert finding.line == 1
     assert FAKE_OPENAI_KEY not in (finding.snippet or "")
     assert "OPENAI_API_KEY" in (finding.snippet or "")
+
+
+def test_hardcoded_secret_rule_does_not_duplicate_frontend_public_api_key_stripe_secret_value(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".env.local").write_text(
+        f"NEXT_PUBLIC_API_KEY={FAKE_STRIPE_SECRET_KEY}\n",
+        encoding="utf-8",
+    )
+
+    findings = HardcodedSecretRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_hardcoded_secret_rule_does_not_flag_public_api_key_with_google_public_key(tmp_path: Path) -> None:
+    (tmp_path / ".env.local").write_text(
+        "NEXT_PUBLIC_API_KEY=AIzaSyabcdefghijklmnopqrstuvwxyz012345\n",
+        encoding="utf-8",
+    )
+
+    findings = HardcodedSecretRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
 
 
 def test_hardcoded_secret_rule_ignores_short_placeholder_assignments(tmp_path: Path) -> None:
