@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from vibegate.scanner import Scanner
+from vibegate.rules.telegram import TelegramWebhookSecretTokenRule
+from vibegate.scanner import ScanContext, Scanner
 
 
 def test_default_scanner_flags_fastapi_telegram_webhook_without_secret_token_check(tmp_path: Path) -> None:
@@ -13,6 +14,32 @@ app = FastAPI()
 @app.post("/telegram/webhook")
 async def telegram_webhook(request: Request):
     update = await request.json()
+    return {"ok": True}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = Scanner().scan(tmp_path)
+
+    finding = next(f for f in result.findings if f.rule_id == "telegram.webhook-secret-token")
+    assert finding.path == "bot.py"
+    assert finding.line == 6
+    assert finding.remediation is not None
+    assert "X-Telegram-Bot-Api-Secret-Token" in finding.remediation
+
+
+def test_default_scanner_flags_generic_fastapi_telegram_webhook_without_secret_token_check(tmp_path: Path) -> None:
+    (tmp_path / "bot.py").write_text(
+        """
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    update = await request.json()
+    await bot.session.close()
     return {"ok": True}
 """.strip()
         + "\n",
@@ -91,6 +118,21 @@ async def notify_bot_owner(message: str):
     result = Scanner().scan(tmp_path)
 
     assert not any(f.rule_id == "telegram.webhook-secret-token" for f in result.findings)
+
+
+def test_telegram_rule_ignores_generic_stripe_webhook(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text(
+        "from fastapi import FastAPI\n"
+        "app = FastAPI()\n"
+        "@app.post('/stripe/webhook')\n"
+        "async def stripe_webhook(request):\n"
+        "    return {'ok': True}\n",
+        encoding="utf-8",
+    )
+
+    findings = TelegramWebhookSecretTokenRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
 
 
 def test_default_scanner_does_not_flag_ordinary_telegram_crud_routes(tmp_path: Path) -> None:

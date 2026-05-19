@@ -56,7 +56,8 @@ class TelegramWebhookSecretTokenRule:
         for node in ast.walk(tree):
             if not isinstance(node, ast.AsyncFunctionDef | ast.FunctionDef):
                 continue
-            if not self._looks_like_telegram_webhook_handler(node):
+            handler_text = "\n".join(lines[node.lineno - 1 : getattr(node, "end_lineno", node.lineno)]).lower()
+            if not self._looks_like_telegram_webhook_handler(node, handler_text):
                 continue
             if self._checks_secret_token(lines, node.lineno, getattr(node, "end_lineno", node.lineno)):
                 continue
@@ -98,21 +99,34 @@ class TelegramWebhookSecretTokenRule:
 
         return findings
 
-    def _looks_like_telegram_webhook_handler(self, node: ast.AsyncFunctionDef | ast.FunctionDef) -> bool:
+    def _looks_like_telegram_webhook_handler(self, node: ast.AsyncFunctionDef | ast.FunctionDef, handler_text: str) -> bool:
         function_name = node.name.lower()
 
         for decorator in node.decorator_list:
             decorator_text = ast.unparse(decorator).lower()
             if not self._is_http_route_decorator(decorator_text):
                 continue
-            if "webhook" in decorator_text or "webhook" in function_name:
+            combined_text = f"{decorator_text} {function_name}"
+            if "webhook" in combined_text and ("telegram" in combined_text or "bot" in combined_text):
                 return True
-            if "update" in decorator_text and ("telegram" in decorator_text or "bot" in decorator_text):
+            if "webhook" in combined_text and self._has_telegram_handler_evidence(handler_text):
+                return True
+            if "update" in decorator_text and ("telegram" in combined_text or "bot" in combined_text):
                 return True
             if "update" in function_name and "bot" in decorator_text:
                 return True
 
         return False
+
+    def _has_telegram_handler_evidence(self, handler_text: str) -> bool:
+        normalized = handler_text.replace("-", "_")
+        return (
+            "telegram" in handler_text
+            or ("bot" in handler_text and "update" in handler_text)
+            or "api.telegram.org/bot" in handler_text
+            or TELEGRAM_SECRET_HEADER.lower() in handler_text
+            or TELEGRAM_SECRET_HEADER.lower().replace("-", "_") in normalized
+        )
 
     def _is_http_route_decorator(self, decorator_text: str) -> bool:
         route_markers = (".route(", ".post(", ".put(", ".patch(", "api_route(", "webhook(")
