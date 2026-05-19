@@ -28,6 +28,32 @@ def test_committed_env_file_rule_ignores_examples(tmp_path: Path) -> None:
     assert findings == []
 
 
+def test_committed_env_file_rule_ignores_untracked_local_dotenv_in_git_repo(tmp_path: Path) -> None:
+    import subprocess
+
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / ".env").write_text("BOT_TOKEN=local-secret\n", encoding="utf-8")
+    (tmp_path / ".env.example").write_text("BOT_TOKEN=\n", encoding="utf-8")
+    subprocess.run(["git", "add", ".env.example"], cwd=tmp_path, check=True, capture_output=True)
+
+    findings = CommittedEnvFileRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_committed_env_file_rule_flags_tracked_dotenv_in_git_repo(tmp_path: Path) -> None:
+    import subprocess
+
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / ".env").write_text("BOT_TOKEN=committed-secret\n", encoding="utf-8")
+    subprocess.run(["git", "add", ".env"], cwd=tmp_path, check=True, capture_output=True)
+
+    findings = CommittedEnvFileRule().scan(ScanContext(root=tmp_path))
+
+    assert len(findings) == 1
+    assert findings[0].path == ".env"
+
+
 def test_hardcoded_secret_rule_flags_telegram_bot_tokens_with_redacted_snippet(tmp_path: Path) -> None:
     (tmp_path / "bot.py").write_text(f'TELEGRAM = "{FAKE_TELEGRAM_TOKEN}"\n', encoding="utf-8")
 

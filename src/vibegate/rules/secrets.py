@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,16 +35,38 @@ class CommittedEnvFileRule:
     def _find_env_files(self, root: Path) -> list[Path]:
         env_files: list[Path] = []
 
-        for path in root.rglob(".env*"):
+        candidates = self._git_tracked_files(root)
+        if candidates is None:
+            candidates = list(root.rglob(".env*"))
+
+        for path in candidates:
             if not path.is_file():
                 continue
             if ignored_path(path, root):
+                continue
+            if not path.name.startswith(".env"):
                 continue
             if path.name in {".env.example", ".env.sample", ".env.template"}:
                 continue
             env_files.append(path)
 
         return sorted(env_files)
+
+    def _git_tracked_files(self, root: Path) -> list[Path] | None:
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(root), "ls-files", "-z"],
+                check=False,
+                capture_output=True,
+            )
+        except OSError:
+            return None
+
+        if result.returncode != 0:
+            return None
+
+        paths = [entry for entry in result.stdout.decode("utf-8", errors="ignore").split("\0") if entry]
+        return [root / path for path in paths]
 
 
 class HardcodedSecretRule:
