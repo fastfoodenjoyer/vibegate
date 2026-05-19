@@ -28,7 +28,7 @@ Initial checks will focus on:
 
 ## Status
 
-Planning phase. See [`docs/plans/`](docs/plans/) for the implementation plan.
+Early MVP build. Public docs will describe shipped behaviour; internal implementation notes stay out of the repository.
 
 ## License
 
