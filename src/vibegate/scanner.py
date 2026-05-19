@@ -6,7 +6,7 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict
 
 from vibegate.models import Finding, ScanSummary
-from vibegate.rules.secrets import CommittedEnvFileRule
+from vibegate.rules.secrets import CommittedEnvFileRule, HardcodedSecretRule
 
 
 class ScanContext(BaseModel):
@@ -29,7 +29,7 @@ class ScanResult(BaseModel):
 
 
 def default_rules() -> list[Rule]:
-    return [CommittedEnvFileRule()]
+    return [CommittedEnvFileRule(), HardcodedSecretRule()]
 
 
 class Scanner:
