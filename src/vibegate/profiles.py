@@ -40,12 +40,27 @@ class ProfileRegistry:
         committed_env_rule = "secrets.committed-env-file"
         frontend_public_secret_rule = "frontend.public-secret-env"
         telegram_rule = "telegram.webhook-secret-token"
+        python_cors_rule = "python.cors-wildcard-credentials"
+        python_fastapi_docs_rule = "python.fastapi-public-docs"
+        python_debug_rule = "python.debug-enabled"
+        django_settings_rule = "python.django-dangerous-settings"
+        uvicorn_reload_rule = "python.uvicorn-reload"
+        python_backend_rules = (
+            committed_env_rule,
+            hardcoded_secret_rule,
+            python_cors_rule,
+            python_fastapi_docs_rule,
+            python_debug_rule,
+            django_settings_rule,
+            uvicorn_reload_rule,
+        )
+        deployment_backend_rules = (committed_env_rule, hardcoded_secret_rule, uvicorn_reload_rule)
         return cls(
             profiles=[
                 Profile(
                     profile_id="python-backend",
                     description="Python backend services and API applications.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=python_backend_rules,
                 ),
                 Profile(
                     profile_id="telegram-bot",
@@ -55,12 +70,12 @@ class ProfileRegistry:
                 Profile(
                     profile_id="railway",
                     description="Railway deployments and related project configuration.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=deployment_backend_rules,
                 ),
                 Profile(
                     profile_id="vps-docker",
                     description="VPS-hosted Docker or Compose deployments.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=deployment_backend_rules,
                 ),
                 Profile(
                     profile_id="nextjs-vercel",
@@ -115,7 +130,7 @@ class ProfileRegistry:
                 Profile(
                     profile_id="docker-vps",
                     description="Alias for VPS-hosted Docker or Compose deployments.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=deployment_backend_rules,
                 ),
             ]
         )
