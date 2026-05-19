@@ -23,6 +23,7 @@ from vibegate.rules.python_backend import (
 )
 from vibegate.rules.secrets import CommittedEnvFileRule, HardcodedSecretRule
 from vibegate.rules.telegram import TelegramWebhookSecretTokenRule
+from vibegate.rules.webhooks import StripeWebhookSignatureRule, SvixWebhookSignatureRule
 
 
 class ScanContext(BaseModel):
@@ -60,6 +61,8 @@ def default_rules() -> list[Rule]:
         DockerDaemonTcpRule(),
         PublicInternalPortRule(),
         HttpOnlyReverseProxyRule(),
+        StripeWebhookSignatureRule(),
+        SvixWebhookSignatureRule(),
     ]
 
 

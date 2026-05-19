@@ -49,6 +49,8 @@ class ProfileRegistry:
         docker_daemon_tcp_rule = "deployment.docker-daemon-tcp"
         public_internal_port_rule = "deployment.public-internal-port"
         http_only_reverse_proxy_rule = "deployment.http-only-reverse-proxy"
+        stripe_webhook_rule = "webhooks.stripe-unsigned"
+        svix_webhook_rule = "webhooks.svix-unsigned"
         python_backend_rules = (
             committed_env_rule,
             hardcoded_secret_rule,
@@ -57,6 +59,8 @@ class ProfileRegistry:
             python_debug_rule,
             django_settings_rule,
             uvicorn_reload_rule,
+            stripe_webhook_rule,
+            svix_webhook_rule,
         )
         deployment_backend_rules = (
             committed_env_rule,
@@ -117,7 +121,7 @@ class ProfileRegistry:
                 Profile(
                     profile_id="stripe-webhooks",
                     description="Applications receiving Stripe webhook events.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, stripe_webhook_rule),
                 ),
                 Profile(
                     profile_id="authjs",
@@ -127,7 +131,7 @@ class ProfileRegistry:
                 Profile(
                     profile_id="clerk",
                     description="Applications using Clerk authentication.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule, svix_webhook_rule),
                 ),
                 Profile(
                     profile_id="github-actions",
@@ -137,7 +141,7 @@ class ProfileRegistry:
                 Profile(
                     profile_id="node-api",
                     description="Node.js API services using Express, Nest, or common server entrypoints.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule, stripe_webhook_rule, svix_webhook_rule),
                 ),
                 Profile(
                     profile_id="docker-vps",
@@ -293,7 +297,9 @@ class ProfileRegistry:
             root,
             re.compile(
                 r"\bSTRIPE_WEBHOOK_SECRET\b|\bwhsec_[A-Za-z0-9_]+|"
-                r"stripe\.webhooks\.constructEvent|stripe\.Webhook\.construct_event",
+                r"stripe\.webhooks\.constructEvent|stripe\.Webhook\.construct_event|"
+                r"stripe[^\n]{0,80}webhook|webhook[^\n]{0,80}stripe",
+                re.IGNORECASE,
             ),
         )
 
@@ -316,9 +322,11 @@ class ProfileRegistry:
             dependency_names = self._package_dependency_names(package_json)
             if any(name == "@clerk/nextjs" or name.startswith("@clerk/") for name in dependency_names):
                 return True
+            if "svix" in dependency_names:
+                return True
         return self._project_text_matches(
             root,
-            re.compile(r"\b(NEXT_PUBLIC_)?CLERK_[A-Z0-9_]+\b"),
+            re.compile(r"\b(NEXT_PUBLIC_)?CLERK_[A-Z0-9_]+\b|\bSVIX_[A-Z0-9_]+\b", re.IGNORECASE),
         )
 
     def _detects_github_actions(self, root: Path) -> bool:
@@ -378,7 +386,19 @@ class ProfileRegistry:
         return any(isinstance(script, str) and command_pattern.search(script) for script in scripts.values())
 
     def _project_text_matches(self, root: Path, pattern: re.Pattern[str]) -> bool:
-        searchable_suffixes = {".env", ".js", ".jsx", ".ts", ".tsx", ".json", ".py"}
+        searchable_suffixes = {
+            ".env",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".mjs",
+            ".cjs",
+            ".mts",
+            ".cts",
+            ".json",
+            ".py",
+        }
         for path in self._iter_project_files(root, "*"):
             if not path.is_file() or self._too_large(path):
                 continue

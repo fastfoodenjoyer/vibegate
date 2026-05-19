@@ -159,6 +159,25 @@ def test_auto_detection_detects_clerk_from_dependency(tmp_path: Path) -> None:
     assert "clerk" in active_profiles
 
 
+def test_auto_detection_detects_clerk_from_svix_dependency(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(
+        '{"dependencies":{"svix":"1.42.0"}}\n',
+        encoding="utf-8",
+    )
+
+    active_profiles = ProfileRegistry.default().detect_profile_ids(tmp_path)
+
+    assert "clerk" in active_profiles
+
+
+def test_auto_detection_detects_clerk_from_svix_webhook_secret(tmp_path: Path) -> None:
+    (tmp_path / ".env.example").write_text("CLERK_WEBHOOK_SECRET=whsec_example\n", encoding="utf-8")
+
+    active_profiles = ProfileRegistry.default().detect_profile_ids(tmp_path)
+
+    assert "clerk" in active_profiles
+
+
 def test_auto_detection_detects_github_actions_from_workflow(tmp_path: Path) -> None:
     workflow_dir = tmp_path / ".github" / "workflows"
     workflow_dir.mkdir(parents=True)
