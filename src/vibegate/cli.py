@@ -27,7 +27,7 @@ def scan(path: Path = typer.Argument(Path("."))) -> None:
 
     for finding in result.findings:
         location = f" ({finding.path})" if finding.path else ""
-        console.print(f"- [{finding.severity.value}] {finding.title}{location}")
+        console.print(f"- [{finding.severity.value}] {finding.title}{location}", markup=False)
 
 
 if __name__ == "__main__":

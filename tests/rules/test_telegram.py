@@ -75,6 +75,44 @@ def bot_update():
     assert "X-Telegram-Bot-Api-Secret-Token" in finding.remediation
 
 
+def test_default_scanner_does_not_flag_non_route_update_functions(tmp_path: Path) -> None:
+    (tmp_path / "repo.py").write_text(
+        """
+def update_user_profile(user_id: int):
+    return {"ok": True}
+
+async def notify_bot_owner(message: str):
+    return None
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = Scanner().scan(tmp_path)
+
+    assert not any(f.rule_id == "telegram.webhook-secret-token" for f in result.findings)
+
+
+def test_default_scanner_does_not_flag_ordinary_telegram_crud_routes(tmp_path: Path) -> None:
+    (tmp_path / "accounts.py").write_text(
+        """
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/telegram/accounts")
+
+@router.patch("/{account_id}")
+async def update_telegram_profile(account_id: int):
+    return {"ok": True}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = Scanner().scan(tmp_path)
+
+    assert not any(f.rule_id == "telegram.webhook-secret-token" for f in result.findings)
+
+
 def test_default_scanner_flags_hardcoded_telegram_webhook_url_token(tmp_path: Path) -> None:
     (tmp_path / "setup.py").write_text(
         'WEBHOOK_URL = "https://api.telegram.org/bot123456789:AAabcdefghijklmnopqrstuvwxyzABCDEFG/setWebhook"\n',

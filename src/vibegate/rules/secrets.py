@@ -53,7 +53,7 @@ class HardcodedSecretRule:
 
     _telegram_token_pattern = re.compile(r"(?<![A-Za-z0-9_-])(\d{8,10}:AA[A-Za-z0-9_-]{33,})(?![A-Za-z0-9_-])")
     _assignment_pattern = re.compile(
-        r"(?P<key>OPENAI_API_KEY|ANTHROPIC_API_KEY|BOT_TOKEN|API_TOKEN|SECRET_KEY)"
+        r"(?<![A-Za-z0-9_])(?P<key>OPENAI_API_KEY|ANTHROPIC_API_KEY|TELEGRAM_BOT_TOKEN|BOT_TOKEN|API_TOKEN|SECRET_KEY)"
         r"\s*(?:=|:)\s*"
         r"(?P<quote>[\"'])?"
         r"(?P<value>[A-Za-z0-9_./+=:@-]{20,})"
@@ -99,6 +99,8 @@ class HardcodedSecretRule:
 
                 for match in self._assignment_pattern.finditer(line):
                     value = match.group("value")
+                    if match.group("quote") is None and path.suffix.lower() == ".py":
+                        continue
                     if self._looks_like_placeholder(value):
                         continue
                     findings.append(
@@ -161,7 +163,10 @@ class HardcodedSecretRule:
             return None
 
     def _looks_like_placeholder(self, value: str) -> bool:
-        return value.lower() in {"changeme", "placeholder", "example", "dummy", "token", "secret", "your-token-here"}
+        normalized = value.strip().lower().strip('"\'')
+        if normalized in {"changeme", "placeholder", "example", "dummy", "token", "secret", "your-token-here"}:
+            return True
+        return normalized.startswith(("your_", "your-", "example_", "example-", "dummy_", "dummy-"))
 
 
 def ignored_path(path: Path, root: Path) -> bool:

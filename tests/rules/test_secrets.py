@@ -68,6 +68,26 @@ def test_hardcoded_secret_rule_ignores_short_placeholder_assignments(tmp_path: P
     assert findings == []
 
 
+def test_hardcoded_secret_rule_ignores_common_example_token_placeholders(tmp_path: Path) -> None:
+    (tmp_path / ".env.example").write_text("TELEGRAM_BOT_TOKEN=your_bot_token_here\n", encoding="utf-8")
+
+    findings = HardcodedSecretRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_hardcoded_secret_rule_ignores_nonliteral_secret_assignments(tmp_path: Path) -> None:
+    (tmp_path / "service.py").write_text(
+        "secret_key = encryption_service.decrypt(provider.secret_key)\n"
+        "token = provider.api_token\n",
+        encoding="utf-8",
+    )
+
+    findings = HardcodedSecretRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
 def test_hardcoded_secret_rule_skips_binary_and_large_files(tmp_path: Path) -> None:
     (tmp_path / "image.png").write_bytes(b"\x89PNG\x00" + FAKE_TELEGRAM_TOKEN.encode())
     (tmp_path / "large.txt").write_text("x" * 1_100_000 + FAKE_TELEGRAM_TOKEN, encoding="utf-8")

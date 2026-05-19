@@ -99,15 +99,25 @@ class TelegramWebhookSecretTokenRule:
         return findings
 
     def _looks_like_telegram_webhook_handler(self, node: ast.AsyncFunctionDef | ast.FunctionDef) -> bool:
-        if any(word in node.name.lower() for word in _WEBHOOK_WORDS):
-            return True
+        function_name = node.name.lower()
 
         for decorator in node.decorator_list:
             decorator_text = ast.unparse(decorator).lower()
-            if any(word in decorator_text for word in _WEBHOOK_WORDS):
+            if not self._is_http_route_decorator(decorator_text):
+                continue
+            if "webhook" in decorator_text or "webhook" in function_name:
+                return True
+            if "update" in decorator_text and ("telegram" in decorator_text or "bot" in decorator_text):
+                return True
+            if "update" in function_name and "bot" in decorator_text:
                 return True
 
         return False
+
+    def _is_http_route_decorator(self, decorator_text: str) -> bool:
+        route_markers = (".route(", ".post(", ".put(", ".patch(", "api_route(", "webhook(")
+        return any(marker in decorator_text for marker in route_markers)
+
 
     def _checks_secret_token(self, lines: list[str], start_line: int, end_line: int) -> bool:
         body = "\n".join(lines[start_line - 1 : end_line]).lower()

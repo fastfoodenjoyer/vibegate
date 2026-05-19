@@ -23,3 +23,4 @@ def test_scan_command_reports_no_ship_for_committed_env_file(tmp_path) -> None:
     assert "Verdict: no-ship" in result.output
     assert "1 findings" in result.output
     assert "Committed .env file" in result.output
+    assert "[high]" in result.output
