@@ -40,6 +40,56 @@ def test_scan_summary_counts_findings_by_severity_and_blocks_high_risk_shipping(
     assert summary.verdict is Verdict.NO_SHIP
 
 
+def test_scan_summary_allows_shipping_when_high_finding_is_advisory() -> None:
+    findings = [
+        Finding(
+            rule_id="runtime.latest-python",
+            title="Runtime uses latest Python",
+            severity=Severity.HIGH,
+            message="Pinning a Python minor version improves deploy reproducibility.",
+            blocking=False,
+        )
+    ]
+
+    summary = ScanSummary.from_findings(findings)
+
+    assert summary.verdict is Verdict.SHIP
+
+
+def test_scan_summary_blocks_high_finding_by_default() -> None:
+    findings = [
+        Finding(
+            rule_id="secrets.env-file",
+            title="Committed .env file",
+            severity=Severity.HIGH,
+            message=".env files often contain deploy tokens and bot credentials.",
+        )
+    ]
+
+    summary = ScanSummary.from_findings(findings)
+
+    assert summary.verdict is Verdict.NO_SHIP
+
+
+def test_finding_references_default_does_not_share_mutable_list() -> None:
+    first = Finding(
+        rule_id="runtime.latest-python",
+        title="Runtime uses latest Python",
+        severity=Severity.HIGH,
+        message="Pinning a Python minor version improves deploy reproducibility.",
+    )
+    second = Finding(
+        rule_id="docs.env-example-missing",
+        title="Missing .env.example",
+        severity=Severity.LOW,
+        message="Project reads environment variables but does not document them.",
+    )
+
+    assert first.references == []
+    assert second.references == []
+    assert first.references is not second.references
+
+
 def test_scan_summary_allows_shipping_when_only_low_or_info_findings_exist() -> None:
     findings = [
         Finding(

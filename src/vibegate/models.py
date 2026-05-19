@@ -25,6 +25,9 @@ class Finding(BaseModel):
     title: str = Field(min_length=1)
     severity: Severity
     message: str = Field(min_length=1)
+    category: str | None = None
+    blocking: bool = True
+    references: list[str] = Field(default_factory=list)
     path: str | None = None
     line: int | None = Field(default=None, ge=1)
     snippet: str | None = None
@@ -44,10 +47,10 @@ class ScanSummary(BaseModel):
         for finding in findings:
             counts[finding.severity] += 1
 
-        verdict = (
-            Verdict.NO_SHIP
-            if counts[Severity.HIGH] > 0 or counts[Severity.CRITICAL] > 0
-            else Verdict.SHIP
+        has_blocking_high_risk_finding = any(
+            finding.blocking and finding.severity in {Severity.HIGH, Severity.CRITICAL}
+            for finding in findings
         )
+        verdict = Verdict.NO_SHIP if has_blocking_high_risk_finding else Verdict.SHIP
 
         return cls(total=len(findings), counts=counts, verdict=verdict)
