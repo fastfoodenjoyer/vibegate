@@ -13,7 +13,7 @@ from vibegate.rules.deployment import (
     HttpOnlyReverseProxyRule,
     PublicInternalPortRule,
 )
-from vibegate.rules.frontend import PublicFrontendSecretEnvRule
+from vibegate.rules.frontend import PublicFrontendSecretEnvRule, PublicFrontendSourceMapRule
 from vibegate.rules.python_backend import (
     DjangoDangerousSettingsRule,
     FastAPICorsWildcardCredentialsRule,
@@ -52,6 +52,7 @@ def default_rules() -> list[Rule]:
         HardcodedSecretRule(),
         TelegramWebhookSecretTokenRule(),
         PublicFrontendSecretEnvRule(),
+        PublicFrontendSourceMapRule(),
         FastAPICorsWildcardCredentialsRule(),
         FastAPIPublicDocsRule(),
         FlaskDebugEnabledRule(),

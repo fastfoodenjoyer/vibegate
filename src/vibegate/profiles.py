@@ -39,6 +39,7 @@ class ProfileRegistry:
         hardcoded_secret_rule = "secrets.hardcoded-token"
         committed_env_rule = "secrets.committed-env-file"
         frontend_public_secret_rule = "frontend.public-secret-env"
+        frontend_public_sourcemap_rule = "frontend.public-sourcemap"
         telegram_rule = "telegram.webhook-secret-token"
         python_cors_rule = "python.cors-wildcard-credentials"
         python_fastapi_docs_rule = "python.fastapi-public-docs"
@@ -96,17 +97,32 @@ class ProfileRegistry:
                 Profile(
                     profile_id="nextjs-vercel",
                     description="Next.js applications commonly deployed on Vercel.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
+                    rule_ids=(
+                        committed_env_rule,
+                        hardcoded_secret_rule,
+                        frontend_public_secret_rule,
+                        frontend_public_sourcemap_rule,
+                    ),
                 ),
                 Profile(
                     profile_id="vite-frontend",
                     description="Vite-powered frontend applications.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
+                    rule_ids=(
+                        committed_env_rule,
+                        hardcoded_secret_rule,
+                        frontend_public_secret_rule,
+                        frontend_public_sourcemap_rule,
+                    ),
                 ),
                 Profile(
                     profile_id="netlify-frontend",
                     description="Frontend applications configured for Netlify deployments.",
-                    rule_ids=(committed_env_rule, hardcoded_secret_rule, frontend_public_secret_rule),
+                    rule_ids=(
+                        committed_env_rule,
+                        hardcoded_secret_rule,
+                        frontend_public_secret_rule,
+                        frontend_public_sourcemap_rule,
+                    ),
                 ),
                 Profile(
                     profile_id="supabase",

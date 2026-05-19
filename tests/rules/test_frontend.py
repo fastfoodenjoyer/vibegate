@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from vibegate.models import Severity, Verdict
-from vibegate.rules.frontend import PublicFrontendSecretEnvRule
+from vibegate.rules.frontend import PublicFrontendSecretEnvRule, PublicFrontendSourceMapRule
 from vibegate.scanner import ScanContext, Scanner
 
 
@@ -276,6 +276,228 @@ def test_public_frontend_secret_env_ignores_documentation_without_real_value(tmp
     findings = PublicFrontendSecretEnvRule().scan(ScanContext(root=tmp_path))
 
     assert findings == []
+
+
+def test_public_frontend_sourcemap_flags_next_production_browser_source_maps_true(tmp_path: Path) -> None:
+    (tmp_path / "next.config.js").write_text(
+        "module.exports = { productionBrowserSourceMaps: true };\n",
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.rule_id == "frontend.public-sourcemap"
+    assert finding.severity is Severity.HIGH
+    assert finding.blocking is True
+    assert finding.path == "next.config.js"
+    assert finding.line == 1
+    assert "productionBrowserSourceMaps" in (finding.snippet or "")
+    assert finding.remediation is not None
+
+
+def test_public_frontend_sourcemap_flags_vite_build_sourcemap_true(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.ts").write_text(
+        "export default defineConfig({ build: { sourcemap: true } });\n",
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert len(findings) == 1
+    assert findings[0].rule_id == "frontend.public-sourcemap"
+    assert findings[0].path == "vite.config.ts"
+    assert findings[0].line == 1
+
+
+def test_public_frontend_sourcemap_flags_vite_quoted_sourcemap_key(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.ts").write_text(
+        'export default { build: { "sourcemap": true } };\n',
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert len(findings) == 1
+    assert findings[0].rule_id == "frontend.public-sourcemap"
+    assert findings[0].path == "vite.config.ts"
+    assert findings[0].line == 1
+
+
+def test_public_frontend_sourcemap_flags_vite_build_sourcemap_inline(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.mjs").write_text(
+        'export default { build: { sourcemap: "inline" } };\n',
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert len(findings) == 1
+    assert findings[0].path == "vite.config.mjs"
+    assert findings[0].line == 1
+
+
+def test_public_frontend_sourcemap_flags_vite_direct_sourcemap_after_nested_object(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.ts").write_text(
+        "export default defineConfig({\n"
+        "  build: {\n"
+        '    rollupOptions: { input: "src/main.ts" },\n'
+        "    sourcemap: true,\n"
+        "  },\n"
+        "});\n",
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert len(findings) == 1
+    assert findings[0].path == "vite.config.ts"
+    assert findings[0].line == 4
+    assert findings[0].snippet == "sourcemap: true,"
+
+
+def test_public_frontend_sourcemap_ignores_vite_nested_rollup_sourcemap(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.ts").write_text(
+        "export default { build: { rollupOptions: { output: { sourcemap: true } } } };\n",
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_public_frontend_sourcemap_flags_vite_build_sourcemap_hidden(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.ts").write_text(
+        'export default { build: { sourcemap: "hidden" } };\n',
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert len(findings) == 1
+    assert findings[0].path == "vite.config.ts"
+    assert findings[0].line == 1
+
+
+def test_public_frontend_sourcemap_ignores_commented_out_config_lines(tmp_path: Path) -> None:
+    (tmp_path / "next.config.js").write_text(
+        "module.exports = {\n"
+        "  // productionBrowserSourceMaps: true,\n"
+        "  productionBrowserSourceMaps: false,\n"
+        "};\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "vite.config.ts").write_text(
+        "export default {\n"
+        "  build: {\n"
+        "    // sourcemap: true,\n"
+        "    sourcemap: false,\n"
+        "  },\n"
+        "};\n",
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_public_frontend_sourcemap_ignores_next_config_string_literal(tmp_path: Path) -> None:
+    (tmp_path / "next.config.js").write_text(
+        'module.exports = { note: "productionBrowserSourceMaps: true" };\n',
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_public_frontend_sourcemap_ignores_vite_config_string_literal(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.ts").write_text(
+        'export default { note: "build: { sourcemap: true }" };\n',
+        encoding="utf-8",
+    )
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_public_frontend_sourcemap_flags_public_map_artifacts(tmp_path: Path) -> None:
+    for relative_path in (
+        "dist/assets/app.js.map",
+        ".next/static/chunks/main.js.map",
+        "out/app.js.map",
+        "build/static/js/main.js.map",
+    ):
+        path = tmp_path / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('{"version":3}\n', encoding="utf-8")
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert [finding.path for finding in findings] == [
+        ".next/static/chunks/main.js.map",
+        "build/static/js/main.js.map",
+        "dist/assets/app.js.map",
+        "out/app.js.map",
+    ]
+    assert all(finding.rule_id == "frontend.public-sourcemap" for finding in findings)
+    assert all(finding.blocking for finding in findings)
+
+
+def test_public_frontend_sourcemap_ignores_disabled_config_and_non_public_maps(tmp_path: Path) -> None:
+    (tmp_path / "next.config.js").write_text(
+        "module.exports = { productionBrowserSourceMaps: false };\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "vite.config.ts").write_text(
+        "export default { build: { sourcemap: false } };\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "src" / "dist").mkdir(parents=True)
+    (tmp_path / "src" / "app.js.map").write_text('{"version":3}\n', encoding="utf-8")
+    (tmp_path / "src" / "dist" / "fixture.js.map").write_text('{"version":3}\n', encoding="utf-8")
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_public_frontend_sourcemap_ignores_docs_and_tests_examples(tmp_path: Path) -> None:
+    for directory in ("docs", "tests"):
+        path = tmp_path / directory
+        path.mkdir()
+        (path / "next.config.js").write_text(
+            "module.exports = { productionBrowserSourceMaps: true };\n",
+            encoding="utf-8",
+        )
+        (path / "vite.config.ts").write_text(
+            "export default { build: { sourcemap: true } };\n",
+            encoding="utf-8",
+        )
+        (path / "dist").mkdir()
+        (path / "dist" / "app.js.map").write_text('{"version":3}\n', encoding="utf-8")
+
+    findings = PublicFrontendSourceMapRule().scan(ScanContext(root=tmp_path))
+
+    assert findings == []
+
+
+def test_frontend_profiles_run_public_sourcemap_rule(tmp_path: Path) -> None:
+    (tmp_path / "vite.config.ts").write_text(
+        "export default { build: { sourcemap: true } };\n",
+        encoding="utf-8",
+    )
+
+    for profile_id in ("nextjs-vercel", "vite-frontend", "netlify-frontend"):
+        result = Scanner().scan(tmp_path, profile_ids=[profile_id])
+
+        assert result.summary.verdict is Verdict.NO_SHIP
+        assert any(finding.rule_id == "frontend.public-sourcemap" for finding in result.findings)
 
 
 def test_nextjs_vercel_profile_runs_public_frontend_secret_env_rule(tmp_path: Path) -> None:
