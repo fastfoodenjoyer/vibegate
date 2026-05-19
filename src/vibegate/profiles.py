@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -60,6 +61,61 @@ class ProfileRegistry:
                     description="VPS-hosted Docker or Compose deployments.",
                     rule_ids=(committed_env_rule, hardcoded_secret_rule),
                 ),
+                Profile(
+                    profile_id="nextjs-vercel",
+                    description="Next.js applications commonly deployed on Vercel.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="vite-frontend",
+                    description="Vite-powered frontend applications.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="netlify-frontend",
+                    description="Frontend applications configured for Netlify deployments.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="supabase",
+                    description="Applications using Supabase project configuration or credentials.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="firebase",
+                    description="Applications using Firebase project configuration or rules.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="stripe-webhooks",
+                    description="Applications receiving Stripe webhook events.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="authjs",
+                    description="Applications using Auth.js or NextAuth authentication.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="clerk",
+                    description="Applications using Clerk authentication.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="github-actions",
+                    description="Repositories with GitHub Actions workflows.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="node-api",
+                    description="Node.js API services using Express, Nest, or common server entrypoints.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
+                Profile(
+                    profile_id="docker-vps",
+                    description="Alias for VPS-hosted Docker or Compose deployments.",
+                    rule_ids=(committed_env_rule, hardcoded_secret_rule),
+                ),
             ]
         )
 
@@ -91,6 +147,28 @@ class ProfileRegistry:
             detected_profile_ids.append("railway")
         if self._detects_vps_docker(root):
             detected_profile_ids.append("vps-docker")
+        if self._detects_nextjs_vercel(root):
+            detected_profile_ids.append("nextjs-vercel")
+        if self._detects_vite_frontend(root):
+            detected_profile_ids.append("vite-frontend")
+        if self._detects_netlify_frontend(root):
+            detected_profile_ids.append("netlify-frontend")
+        if self._detects_supabase(root):
+            detected_profile_ids.append("supabase")
+        if self._detects_firebase(root):
+            detected_profile_ids.append("firebase")
+        if self._detects_stripe_webhooks(root):
+            detected_profile_ids.append("stripe-webhooks")
+        if self._detects_authjs(root):
+            detected_profile_ids.append("authjs")
+        if self._detects_clerk(root):
+            detected_profile_ids.append("clerk")
+        if self._detects_github_actions(root):
+            detected_profile_ids.append("github-actions")
+        if self._detects_node_api(root):
+            detected_profile_ids.append("node-api")
+        if self._detects_vps_docker(root):
+            detected_profile_ids.append("docker-vps")
         return detected_profile_ids
 
     def rule_ids_for_profiles(self, profile_ids: list[str]) -> list[str]:
@@ -136,6 +214,141 @@ class ProfileRegistry:
     def _detects_vps_docker(self, root: Path) -> bool:
         docker_names = {"Dockerfile", "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"}
         return any((root / name).is_file() for name in docker_names)
+
+    def _detects_nextjs_vercel(self, root: Path) -> bool:
+        package_json = self._read_package_json(root)
+        if package_json is None:
+            return False
+        return "next" in self._package_dependency_names(package_json) or self._package_script_uses(
+            package_json,
+            "next",
+        )
+
+    def _detects_vite_frontend(self, root: Path) -> bool:
+        if any(root.glob("vite.config.*")):
+            return True
+        package_json = self._read_package_json(root)
+        if package_json is None:
+            return False
+        return self._package_script_uses(package_json, "vite")
+
+    def _detects_netlify_frontend(self, root: Path) -> bool:
+        return (root / "netlify.toml").is_file()
+
+    def _detects_supabase(self, root: Path) -> bool:
+        if (root / "supabase").is_dir():
+            return True
+        return self._project_text_matches(
+            root,
+            re.compile(
+                r"\b(NEXT_PUBLIC_)?SUPABASE_(URL|ANON_KEY|SERVICE_ROLE_KEY|JWT_SECRET)\b",
+                re.IGNORECASE,
+            ),
+        )
+
+    def _detects_firebase(self, root: Path) -> bool:
+        firebase_names = {"firebase.json", "firestore.rules", "storage.rules"}
+        return any((root / name).is_file() for name in firebase_names)
+
+    def _detects_stripe_webhooks(self, root: Path) -> bool:
+        return self._project_text_matches(
+            root,
+            re.compile(
+                r"\bSTRIPE_WEBHOOK_SECRET\b|\bwhsec_[A-Za-z0-9_]+|"
+                r"stripe\.webhooks\.constructEvent|stripe\.Webhook\.construct_event",
+            ),
+        )
+
+    def _detects_authjs(self, root: Path) -> bool:
+        package_json = self._read_package_json(root)
+        if package_json is not None and self._package_dependency_names(package_json) & {
+            "next-auth",
+            "@auth/core",
+            "@auth/nextjs",
+        }:
+            return True
+        return self._project_text_matches(
+            root,
+            re.compile(r"\b(AUTH_SECRET|NEXTAUTH_SECRET|NEXTAUTH_URL)\b"),
+        )
+
+    def _detects_clerk(self, root: Path) -> bool:
+        package_json = self._read_package_json(root)
+        if package_json is not None:
+            dependency_names = self._package_dependency_names(package_json)
+            if any(name == "@clerk/nextjs" or name.startswith("@clerk/") for name in dependency_names):
+                return True
+        return self._project_text_matches(
+            root,
+            re.compile(r"\b(NEXT_PUBLIC_)?CLERK_[A-Z0-9_]+\b"),
+        )
+
+    def _detects_github_actions(self, root: Path) -> bool:
+        workflow_dir = root / ".github" / "workflows"
+        if not workflow_dir.is_dir():
+            return False
+        return any(path.is_file() and path.suffix in {".yml", ".yaml"} for path in workflow_dir.iterdir())
+
+    def _detects_node_api(self, root: Path) -> bool:
+        package_json = self._read_package_json(root)
+        if package_json is not None and self._package_dependency_names(package_json) & {
+            "express",
+            "@nestjs/common",
+            "@nestjs/core",
+        }:
+            return True
+        for entrypoint in ("server.js", "server.ts", "app.js", "app.ts", "index.js", "index.ts"):
+            path = root / entrypoint
+            if not path.is_file() or self._too_large(path):
+                continue
+            content = self._read_text(path)
+            if content is None:
+                continue
+            if re.search(r"\b(app|server)\.listen\s*\(", content) or "createServer(" in content:
+                return True
+        return False
+
+    def _read_package_json(self, root: Path) -> dict[str, object] | None:
+        path = root / "package.json"
+        if not path.is_file() or self._too_large(path):
+            return None
+        content = self._read_text(path)
+        if content is None:
+            return None
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict):
+            return None
+        return data
+
+    def _package_dependency_names(self, package_json: dict[str, object]) -> set[str]:
+        dependency_names: set[str] = set()
+        for key in ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies"):
+            dependencies = package_json.get(key)
+            if not isinstance(dependencies, dict):
+                continue
+            dependency_names.update(name for name in dependencies if isinstance(name, str))
+        return dependency_names
+
+    def _package_script_uses(self, package_json: dict[str, object], command: str) -> bool:
+        scripts = package_json.get("scripts")
+        if not isinstance(scripts, dict):
+            return False
+        command_pattern = re.compile(rf"(^|[\s;&|]){re.escape(command)}([\s:&|]|$)")
+        return any(isinstance(script, str) and command_pattern.search(script) for script in scripts.values())
+
+    def _project_text_matches(self, root: Path, pattern: re.Pattern[str]) -> bool:
+        searchable_suffixes = {".env", ".js", ".jsx", ".ts", ".tsx", ".json", ".py"}
+        for path in self._iter_project_files(root, "*"):
+            if not path.is_file() or self._too_large(path):
+                continue
+            if path.name.startswith(".env") or path.suffix.lower() in searchable_suffixes:
+                content = self._read_text(path)
+                if content is not None and pattern.search(content):
+                    return True
+        return False
 
     def _iter_project_files(self, root: Path, pattern: str) -> Iterator[Path]:
         for path in sorted(root.rglob(pattern)):
