@@ -1,0 +1,39 @@
+[project]
+name = "vibegate"
+version = "0.0.0"
+description = "Ship/no-ship pre-deploy gate for AI-generated backend apps and bots."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Timofey Pavlov" }]
+keywords = ["security", "cli", "ai-generated-code", "telegram-bots", "backend", "devtools"]
+dependencies = [
+  "typer>=0.12",
+  "rich>=13.7",
+  "pydantic>=2.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/fastfoodenjoyer/vibegate"
+Repository = "https://github.com/fastfoodenjoyer/vibegate"
+Issues = "https://github.com/fastfoodenjoyer/vibegate/issues"
+
+[project.scripts]
+vibegate = "vibegate.cli:app"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+  "ruff>=0.5",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
