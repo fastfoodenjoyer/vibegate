@@ -7,6 +7,12 @@ from pydantic import BaseModel, ConfigDict
 
 from vibegate.models import Finding, ScanSummary
 from vibegate.profiles import ProfileRegistry
+from vibegate.rules.deployment import (
+    DockerDaemonTcpRule,
+    DockerSocketMountedRule,
+    HttpOnlyReverseProxyRule,
+    PublicInternalPortRule,
+)
 from vibegate.rules.frontend import PublicFrontendSecretEnvRule
 from vibegate.rules.python_backend import (
     DjangoDangerousSettingsRule,
@@ -50,6 +56,10 @@ def default_rules() -> list[Rule]:
         FlaskDebugEnabledRule(),
         DjangoDangerousSettingsRule(),
         UvicornReloadRule(),
+        DockerSocketMountedRule(),
+        DockerDaemonTcpRule(),
+        PublicInternalPortRule(),
+        HttpOnlyReverseProxyRule(),
     ]
 
 

@@ -45,6 +45,10 @@ class ProfileRegistry:
         python_debug_rule = "python.debug-enabled"
         django_settings_rule = "python.django-dangerous-settings"
         uvicorn_reload_rule = "python.uvicorn-reload"
+        docker_socket_rule = "deployment.docker-socket-mounted"
+        docker_daemon_tcp_rule = "deployment.docker-daemon-tcp"
+        public_internal_port_rule = "deployment.public-internal-port"
+        http_only_reverse_proxy_rule = "deployment.http-only-reverse-proxy"
         python_backend_rules = (
             committed_env_rule,
             hardcoded_secret_rule,
@@ -54,7 +58,15 @@ class ProfileRegistry:
             django_settings_rule,
             uvicorn_reload_rule,
         )
-        deployment_backend_rules = (committed_env_rule, hardcoded_secret_rule, uvicorn_reload_rule)
+        deployment_backend_rules = (
+            committed_env_rule,
+            hardcoded_secret_rule,
+            uvicorn_reload_rule,
+            docker_socket_rule,
+            docker_daemon_tcp_rule,
+            public_internal_port_rule,
+            http_only_reverse_proxy_rule,
+        )
         return cls(
             profiles=[
                 Profile(
@@ -132,6 +144,11 @@ class ProfileRegistry:
                     description="Alias for VPS-hosted Docker or Compose deployments.",
                     rule_ids=deployment_backend_rules,
                 ),
+                Profile(
+                    profile_id="coolify",
+                    description="Coolify-hosted Docker or Compose deployments.",
+                    rule_ids=deployment_backend_rules,
+                ),
             ]
         )
 
@@ -185,6 +202,8 @@ class ProfileRegistry:
             detected_profile_ids.append("node-api")
         if self._detects_vps_docker(root):
             detected_profile_ids.append("docker-vps")
+        if self._detects_coolify(root):
+            detected_profile_ids.append("coolify")
         return detected_profile_ids
 
     def rule_ids_for_profiles(self, profile_ids: list[str]) -> list[str]:
@@ -230,6 +249,9 @@ class ProfileRegistry:
     def _detects_vps_docker(self, root: Path) -> bool:
         docker_names = {"Dockerfile", "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"}
         return any((root / name).is_file() for name in docker_names)
+
+    def _detects_coolify(self, root: Path) -> bool:
+        return (root / "coolify.json").is_file()
 
     def _detects_nextjs_vercel(self, root: Path) -> bool:
         package_json = self._read_package_json(root)

@@ -26,6 +26,7 @@ def test_registry_lists_expected_profiles() -> None:
         "github-actions",
         "node-api",
         "docker-vps",
+        "coolify",
     ]
     assert all(profile.description for profile in profiles)
 
@@ -186,6 +187,14 @@ def test_auto_detection_detects_docker_vps_alias_from_compose(tmp_path: Path) ->
 
     assert "vps-docker" in active_profiles
     assert "docker-vps" in active_profiles
+
+
+def test_auto_detection_detects_coolify_from_config(tmp_path: Path) -> None:
+    (tmp_path / "coolify.json").write_text('{"name":"demo"}\n', encoding="utf-8")
+
+    active_profiles = ProfileRegistry.default().detect_profile_ids(tmp_path)
+
+    assert "coolify" in active_profiles
 
 
 def test_auto_detection_does_not_detect_stack_profiles_from_generic_package_json(
